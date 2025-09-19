@@ -1,15 +1,24 @@
 import express from "express";
 import mysql from "mysql2/promise";
 import axios from "axios";
+import path from "path";
+import { fileURLToPath } from "url";
 
 const app = express();
 const PORT = 3000;
 
+// Needed to resolve __dirname in ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Serve static files (CSS, images, etc.)
+app.use(express.static(path.join(__dirname, "public")));
+
 const db = await mysql.createConnection({
   host: "localhost",
-  user: "root",       
-  password: "",       
-  database: "student" 
+  user: "root",
+  password: "",
+  database: "student"
 });
 
 app.get("/", async (req, res) => {
@@ -28,32 +37,68 @@ app.get("/", async (req, res) => {
           };
         } catch (err) {
           console.error(`Weather error for ${student.city}:`, err.message);
-          return { ...student, weather: "N/A" }; 
+          return { ...student, weather: "N/A" };
         }
       })
     );
 
     let html = `
-      <h1>Simple Student Information System and Integrate with Weather API</h1>
-      <table border="1" cellpadding="8">
-        <tr>
-          <th>Name</th><th>Age</th><th>Course</th><th>City</th><th>Current Weather</th>
-        </tr>
+      <!doctype html>
+      <html lang="en">
+      <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>Student Info + Weather</title>
+        <link rel="stylesheet" href="/styles.css">
+      </head>
+      <body>
+        <div class="container">
+          <header>
+            <div>
+              <h1>Simple Student Information System <small>— with Weather</small></h1>
+              <p class="lead">Data from your local MySQL DB and Open-Meteo current weather.</p>
+            </div>
+            <div class="badge">Records: ${results.length}</div>
+          </header>
+
+          <div class="card">
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Age</th>
+                    <th>Course</th>
+                    <th>City</th>
+                    <th>Current Weather</th>
+                  </tr>
+                </thead>
+                <tbody>
     `;
 
     results.forEach((s) => {
       html += `
         <tr>
-          <td>${s.name}</td>
-          <td>${s.age}</td>
-          <td>${s.course}</td>
-          <td>${s.city}</td>
-          <td>${s.weather}</td>
+          <td>${s.name ?? ""}</td>
+          <td>${s.age ?? ""}</td>
+          <td>${s.course ?? ""}</td>
+          <td>${s.city ?? ""}</td>
+          <td>${s.weather ?? "N/A"}</td>
         </tr>
       `;
     });
 
-    html += "</table>";
+    html += `
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <footer>Built with Express • Open-Meteo • ${new Date().toLocaleDateString()}</footer>
+        </div>
+      </body>
+      </html>
+    `;
     res.send(html);
 
   } catch (error) {
